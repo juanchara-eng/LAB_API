@@ -210,7 +210,8 @@ app.get('/supabase-status', handleSupabaseStatus);
 // =====================================================
 // LEVANTAR SERVIDOR
 // =====================================================
-if (!process.env.VERCEL) {
+const isVercel = process.env.VERCEL || process.env.NOW_REGION || process.env.NOW;
+if (!isVercel) {
   const server = app.listen(PORT, () => {
     console.log('Servidor ejecutándose puerto', PORT);
   });
