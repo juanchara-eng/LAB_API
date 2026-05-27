@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Universidad Lab - UI Interactiva</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="shell">
+    <header class="hero">
+      <div>
+        <p class="eyebrow">Laboratorio Universidad</p>
+        <h1>Panel interactivo de API</h1>
+        <p>Gestiona estudiantes, consultas JOIN y prueba peticiones como en Postman desde una sola interfaz.</p>
+      </div>
+      <div class="hero-cta">
+        <span>API en</span>
+        <strong>http://localhost:3000</strong>
+      </div>
+    </header>
+
+    <nav class="tabs" role="tablist">
+      <button class="tab-button active" data-tab="dashboard">Dashboard</button>
+      <button class="tab-button" data-tab="estudiantes">Estudiantes</button>
+      <button class="tab-button" data-tab="matriculas">Matrículas</button>
+      <button class="tab-button" data-tab="tester">API Tester</button>
+    </nav>
+
+    <main>
+      <section id="dashboard" class="panel active">
+        <div class="grid">
+          <article class="card card-accent">
+            <h2>Estudiantes</h2>
+            <p class="metric" id="total-estudiantes">--</p>
+            <p class="caption">Registros disponibles</p>
+          </article>
+          <article class="card">
+            <h2>Matrículas</h2>
+            <p class="metric" id="total-matriculas">--</p>
+            <p class="caption">Relaciones curso / estudiante</p>
+          </article>
+          <article class="card">
+            <h2>Rápido</h2>
+            <p class="metric">UI + API</p>
+            <p class="caption">Crea, edita, elimina y prueba solicitudes</p>
+          </article>
+        </div>
+
+        <div class="welcome-card">
+          <div>
+            <h2>¿Qué puedes hacer aquí?</h2>
+            <ul>
+              <li>Crear, editar y eliminar estudiantes.</li>
+              <li>Ver matriculas completas con JOINs.</li>
+              <li>Probar métodos GET, POST, PUT y DELETE con inputs.</li>
+            </ul>
+          </div>
+          <div class="welcome-actions">
+            <button class="primary" onclick="goToTab('estudiantes')">Gestionar Estudiantes</button>
+            <button onclick="goToTab('tester')">Abrir API Tester</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="estudiantes" class="panel">
+        <div class="section-header">
+          <div>
+            <h2>Gestión de estudiantes</h2>
+            <p>Crea, edita y elimina estudiantes con un formulario limpio.</p>
+          </div>
+          <button class="secondary" onclick="loadEstudiantes()">Actualizar lista</button>
+        </div>
+
+        <div class="columns">
+          <div class="form-card">
+            <h3 id="estudiante-form-title">Nuevo estudiante</h3>
+            <div class="field-group">
+              <label for="nombre">Nombre</label>
+              <input id="nombre" type="text" placeholder="Ej. Ana Pérez" />
+            </div>
+            <div class="field-group">
+              <label for="correo">Correo</label>
+              <input id="correo" type="email" placeholder="ana@universidad.edu" />
+            </div>
+            <div class="field-group">
+              <label for="semestre">Semestre</label>
+              <input id="semestre" type="number" min="1" max="12" placeholder="7" />
+            </div>
+            <div class="actions">
+              <button class="primary" onclick="submitEstudiante()">Guardar estudiante</button>
+              <button class="secondary" onclick="resetForm()" type="button">Limpiar</button>
+            </div>
+          </div>
+
+          <div class="table-card">
+            <h3>Lista de estudiantes</h3>
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr><th>ID</th><th>Nombre</th><th>Correo</th><th>Semestre</th><th>Acciones</th></tr>
+                </thead>
+                <tbody id="estudiantes-table"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="matriculas" class="panel">
+        <div class="section-header">
+          <div>
+            <h2>Matrículas completas</h2>
+            <p>Consulta JOIN con estudiante, curso, docente y facultad.</p>
+          </div>
+          <button class="secondary" onclick="loadMatriculas()">Refrescar</button>
+        </div>
+
+        <div class="table-card full-width">
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr><th>ID</th><th>Estudiante</th><th>Semestre</th><th>Curso</th><th>Créditos</th><th>Docente</th><th>Facultad</th><th>Fecha</th></tr>
+              </thead>
+              <tbody id="matriculas-table"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section id="tester" class="panel">
+        <div class="section-header">
+          <div>
+            <h2>API Tester</h2>
+            <p>Envía solicitudes como en Postman y controla los inputs según el método.</p>
+          </div>
+          <button class="secondary" onclick="resetTester()">Nuevo request</button>
+        </div>
+
+        <div class="tester-grid">
+          <div class="form-card">
+            <div class="field-group">
+              <label for="http-method">Método</label>
+              <select id="http-method" onchange="updateTesterForm()">
+                <option>GET</option>
+                <option>POST</option>
+                <option>PUT</option>
+                <option>DELETE</option>
+              </select>
+            </div>
+            <div class="field-group">
+              <label for="api-url">URL</label>
+              <input id="api-url" type="text" value="/estudiantes" placeholder="/estudiantes or /estudiantes/1" />
+            </div>
+            <div id="id-field" class="field-group hidden">
+              <label for="resource-id">ID del recurso</label>
+              <input id="resource-id" type="number" placeholder="1" />
+            </div>
+            <div id="payload-fields" class="payload hidden">
+              <div class="field-group">
+                <label for="body-nombre">Nombre</label>
+                <input id="body-nombre" type="text" placeholder="Ej. Luis Gómez" />
+              </div>
+              <div class="field-group">
+                <label for="body-correo">Correo</label>
+                <input id="body-correo" type="email" placeholder="luis@universidad.edu" />
+              </div>
+              <div class="field-group">
+                <label for="body-semestre">Semestre</label>
+                <input id="body-semestre" type="number" min="1" max="12" placeholder="3" />
+              </div>
+            </div>
+            <div class="actions">
+              <button class="primary" onclick="sendApiRequest()">Enviar petición</button>
+            </div>
+          </div>
+
+          <div class="response-card">
+            <div class="response-header">
+              <h3>Respuesta</h3>
+              <span id="response-status">Listo</span>
+            </div>
+            <pre id="response-body">Selecciona un método y envía la petición.</pre>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    let editId = null;
+
+    document.querySelectorAll('.tab-button').forEach(button => {
+      button.addEventListener('click', () => {
+        const target = button.dataset.tab;
+        document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+        document.querySelectorAll('.panel').forEach(panel => panel.classList.remove('active'));
+        button.classList.add('active');
+        document.getElementById(target).classList.add('active');
+      });
+    });
+
+    function goToTab(tabId) {
+      document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('.panel').forEach(panel => panel.classList.remove('active'));
+      document.querySelector(`[data-tab='${tabId}']`).classList.add('active');
+      document.getElementById(tabId).classList.add('active');
+    }
+
+    function updateTesterForm() {
+      const method = document.getElementById('http-method').value;
+      const bodySection = document.getElementById('payload-fields');
+      const idSection = document.getElementById('id-field');
+      if (method === 'POST') {
+        bodySection.classList.remove('hidden');
+        idSection.classList.add('hidden');
+      } else if (method === 'PUT') {
+        bodySection.classList.remove('hidden');
+        idSection.classList.remove('hidden');
+      } else if (method === 'DELETE') {
+        bodySection.classList.add('hidden');
+        idSection.classList.remove('hidden');
+      } else {
+        bodySection.classList.add('hidden');
+        idSection.classList.add('hidden');
+      }
+    }
+
+    async function loadEstudiantes() {
+      try {
+        const response = await fetch('/estudiantes');
+        const estudiantes = await response.json();
+        const table = document.getElementById('estudiantes-table');
+        table.innerHTML = '';
+
+        estudiantes.forEach(est => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td>${est.id}</td>
+            <td>${est.nombre}</td>
+            <td>${est.correo}</td>
+            <td>${est.semestre ?? '-'}</td>
+            <td class="actions-cell">
+              <button class="small" onclick="startEdit(${est.id}, '${escape(est.nombre)}', '${escape(est.correo)}', ${est.semestre || 1})">Editar</button>
+              <button class="small danger" onclick="deleteEstudiante(${est.id})">Eliminar</button>
+            </td>
+          `;
+          table.appendChild(row);
+        });
+
+        document.getElementById('total-estudiantes').textContent = estudiantes.length;
+      } catch (error) {
+        showResponse('Error cargando estudiantes', error);
+      }
+    }
+
+    async function loadMatriculas() {
+      try {
+        const response = await fetch('/matriculas-completas');
+        const matriculas = await response.json();
+        const table = document.getElementById('matriculas-table');
+        table.innerHTML = '';
+        matriculas.forEach(m => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td>${m.id}</td>
+            <td>${m.estudiante}</td>
+            <td>${m.semestre}</td>
+            <td>${m.curso}</td>
+            <td>${m.creditos}</td>
+            <td>${m.docente}</td>
+            <td>${m.facultad}</td>
+            <td>${m.fecha}</td>
+          `;
+          table.appendChild(row);
+        });
+        document.getElementById('total-matriculas').textContent = matriculas.length;
+      } catch (error) {
+        showResponse('Error cargando matrículas', error);
+      }
+    }
+
+    async function submitEstudiante() {
+      const nombre = document.getElementById('nombre').value.trim();
+      const correo = document.getElementById('correo').value.trim();
+      const semestre = Number(document.getElementById('semestre').value) || 1;
+
+      if (!nombre || !correo) {
+        showResponse('Completa nombre y correo antes de guardar');
+        return;
+      }
+
+      const payload = { nombre, correo, semestre };
+      const method = editId ? 'PUT' : 'POST';
+      const url = editId ? `/estudiantes/${editId}` : '/estudiantes';
+
+      try {
+        const response = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const data = await response.json();
+        showResponse(`Estudiante ${editId ? 'actualizado' : 'creado'}`, data, response.status);
+        resetForm();
+        await loadEstudiantes();
+      } catch (error) {
+        showResponse('Error guardando estudiante', error);
+      }
+    }
+
+    function startEdit(id, nombre, correo, semestre) {
+      editId = id;
+      document.getElementById('estudiante-form-title').textContent = 'Editar estudiante';
+      document.getElementById('nombre').value = nombre;
+      document.getElementById('correo').value = correo;
+      document.getElementById('semestre').value = semestre;
+      goToTab('estudiantes');
+    }
+
+    async function deleteEstudiante(id) {
+      if (!confirm('¿Eliminar este estudiante?')) return;
+      try {
+        const response = await fetch(`/estudiantes/${id}`, { method: 'DELETE' });
+        const data = await response.json();
+        showResponse('Estudiante eliminado', data, response.status);
+        await loadEstudiantes();
+      } catch (error) {
+        showResponse('Error eliminando estudiante', error);
+      }
+    }
+
+    async function sendApiRequest() {
+      const method = document.getElementById('http-method').value;
+      let url = document.getElementById('api-url').value.trim();
+      const resourceId = document.getElementById('resource-id').value.trim();
+      if (!url.startsWith('/')) url = '/' + url;
+      if ((method === 'PUT' || method === 'DELETE') && resourceId) {
+        url = url.replace(/\/$/, '') + '/' + resourceId;
+      }
+
+      const options = { method, headers: {} };
+      if (method === 'POST' || method === 'PUT') {
+        const nombre = document.getElementById('body-nombre').value.trim();
+        const correo = document.getElementById('body-correo').value.trim();
+        const semestreValue = document.getElementById('body-semestre').value.trim();
+        const body = {};
+        if (nombre) body.nombre = nombre;
+        if (correo) body.correo = correo;
+        if (semestreValue) body.semestre = Number(semestreValue);
+        options.headers['Content-Type'] = 'application/json';
+        options.body = JSON.stringify(body);
+      }
+
+      try {
+        const response = await fetch(url, options);
+        const text = await response.text();
+        let body = text;
+        try { body = JSON.parse(text); } catch (_) {}
+        showResponse(`HTTP ${response.status} ${response.statusText}`, body, response.status);
+      } catch (error) {
+        showResponse('Error enviando petición', error);
+      }
+    }
+
+    function showResponse(title, body = '', status = '') {
+      document.getElementById('response-status').textContent = status ? `${status} · ${title}` : title;
+      const output = typeof body === 'string' ? body : JSON.stringify(body, null, 2);
+      document.getElementById('response-body').textContent = output;
+    }
+
+    function resetForm() {
+      editId = null;
+      document.getElementById('estudiante-form-title').textContent = 'Nuevo estudiante';
+      document.getElementById('nombre').value = '';
+      document.getElementById('correo').value = '';
+      document.getElementById('semestre').value = '';
+    }
+
+    function resetTester() {
+      document.getElementById('http-method').value = 'GET';
+      document.getElementById('api-url').value = '/estudiantes';
+      document.getElementById('resource-id').value = '';
+      document.getElementById('body-nombre').value = '';
+      document.getElementById('body-correo').value = '';
+      document.getElementById('body-semestre').value = '';
+      document.getElementById('response-status').textContent = 'Listo';
+      document.getElementById('response-body').textContent = 'Selecciona un método y envía la petición.';
+      updateTesterForm();
+    }
+
+    function escape(text) {
+      return text.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+    }
+
+    window.addEventListener('load', () => {
+      updateTesterForm();
+      resetTester();
+      loadEstudiantes();
+      loadMatriculas();
+    });
+  </script>
+</body>
+</html>
