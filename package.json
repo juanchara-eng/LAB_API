@@ -1,10 +1,10 @@
 {
-  "name": "laboratorio-universidad",
+  "name": "laboratorio-ui",
   "version": "1.0.0",
-  "description": "API REST Universidad - Express + Supabase Postgres",
-  "main": "app.js",
+  "private": true,
   "scripts": {
-    "start": "node app.js"
+    "start": "node api/index.js",
+    "check:supabase": "node laboratorio-universidad/scripts/check-supabase.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.106.2",

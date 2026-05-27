@@ -1,5 +1,6 @@
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '..', '.env') });
 const express = require("express");
-const path = require("path");
 const axios = require("axios");
 const db = require("./db");
 const app = express();
@@ -39,16 +40,16 @@ app.get('/usuario-externo', handleUsuariosExternos);
 // =====================================================
 // CREATE ESTUDIANTE
 // =====================================================
-const handleCreateEstudiante = (req, res) => {
+const handleCreateEstudiante = async (req, res) => {
   const { nombre, correo, semestre = 1 } = req.body;
-  const sql = `
-    INSERT INTO estudiantes (nombre, correo, semestre)
-    VALUES (?, ?, ?)
-  `;
-  db.query(sql, [nombre, correo, semestre], (error, result) => {
-    if (error) return res.status(500).json(error);
-    res.status(201).json({ mensaje: 'Estudiante agregado', id: result.insertId });
-  });
+  const { data, error } = await db
+    .from('estudiantes')
+    .insert({ nombre, correo, semestre })
+    .select('id')
+    .single();
+
+  if (error) return res.status(500).json(error);
+  res.status(201).json({ mensaje: 'Estudiante agregado', id: data.id });
 };
 
 app.post('/estudiantes', handleCreateEstudiante);
@@ -57,11 +58,14 @@ app.post('/estudiante', handleCreateEstudiante);
 // =====================================================
 // READ TODOS
 // =====================================================
-const handleGetEstudiantes = (req, res) => {
-  db.query('SELECT * FROM estudiantes', (error, results) => {
-    if (error) return res.status(500).json(error);
-    res.json(results);
-  });
+const handleGetEstudiantes = async (req, res) => {
+  const { data, error } = await db
+    .from('estudiantes')
+    .select('*')
+    .order('id');
+
+  if (error) return res.status(500).json(error);
+  res.json(data);
 };
 
 app.get('/estudiantes', handleGetEstudiantes);
@@ -70,13 +74,18 @@ app.get('/estudiante', handleGetEstudiantes);
 // =====================================================
 // READ POR ID
 // =====================================================
-const handleGetEstudianteById = (req, res) => {
-  const sql = `SELECT * FROM estudiantes WHERE id = ?`;
-  db.query(sql, [req.params.id], (error, results) => {
-    if (error) return res.status(500).json(error);
-    if (!results || results.length === 0) return res.status(404).json({ mensaje: 'No encontrado' });
-    res.json(results[0]);
-  });
+const handleGetEstudianteById = async (req, res) => {
+  const { data, error } = await db
+    .from('estudiantes')
+    .select('*')
+    .eq('id', req.params.id)
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') return res.status(404).json({ mensaje: 'No encontrado' });
+    return res.status(500).json(error);
+  }
+  res.json(data);
 };
 
 app.get('/estudiantes/:id', handleGetEstudianteById);
@@ -85,17 +94,15 @@ app.get('/estudiante/:id', handleGetEstudianteById);
 // =====================================================
 // UPDATE
 // =====================================================
-const handleUpdateEstudiante = (req, res) => {
+const handleUpdateEstudiante = async (req, res) => {
   const { nombre, correo, semestre = 1 } = req.body;
-  const sql = `
-    UPDATE estudiantes
-    SET nombre = ?, correo = ?, semestre = ?
-    WHERE id = ?
-  `;
-  db.query(sql, [nombre, correo, semestre, req.params.id], (error) => {
-    if (error) return res.status(500).json(error);
-    res.json({ mensaje: 'Actualizado' });
-  });
+  const { error } = await db
+    .from('estudiantes')
+    .update({ nombre, correo, semestre })
+    .eq('id', req.params.id);
+
+  if (error) return res.status(500).json(error);
+  res.json({ mensaje: 'Actualizado' });
 };
 
 app.put('/estudiantes/:id', handleUpdateEstudiante);
@@ -104,20 +111,22 @@ app.put('/estudiante/:id', handleUpdateEstudiante);
 // =====================================================
 // DELETE
 // =====================================================
-const handleDeleteEstudiante = (req, res) => {
-  const sql = `DELETE FROM estudiantes WHERE id = ?`;
-  db.query(sql, [req.params.id], (error) => {
-    if (error) {
-      if (error.code === 'ER_ROW_IS_REFERENCED_2') {
-        return res.status(400).json({
-          error: 'No se puede eliminar este estudiante',
-          razon: 'El estudiante tiene matrículas asociadas. Elimina primero las matrículas.'
-        });
-      }
-      return res.status(500).json(error);
+const handleDeleteEstudiante = async (req, res) => {
+  const { error } = await db
+    .from('estudiantes')
+    .delete()
+    .eq('id', req.params.id);
+
+  if (error) {
+    if (error.code === '23503') {
+      return res.status(400).json({
+        error: 'No se puede eliminar este estudiante',
+        razon: 'El estudiante tiene matrículas asociadas. Elimina primero las matrículas.'
+      });
     }
-    res.json({ mensaje: 'Eliminado' });
-  });
+    return res.status(500).json(error);
+  }
+  res.json({ mensaje: 'Eliminado' });
 };
 
 app.delete('/estudiantes/:id', handleDeleteEstudiante);
@@ -126,31 +135,77 @@ app.delete('/estudiante/:id', handleDeleteEstudiante);
 // =====================================================
 // CONSULTA JOIN
 // =====================================================
-const handleMatriculasCompletas = (req, res) => {
-  const sql = `
-    SELECT
-      m.id,
-      e.nombre AS estudiante,
-      e.semestre,
-      c.nombre AS curso,
-      c.creditos,
-      d.nombre AS docente,
-      f.nombre AS facultad,
-      m.fecha
-    FROM matriculas m
-    INNER JOIN estudiantes e ON m.estudiante_id = e.id
-    INNER JOIN cursos c ON m.curso_id = c.id
-    INNER JOIN docentes d ON c.docente_id = d.id
-    INNER JOIN facultades f ON c.facultad_id = f.id
-  `;
-  db.query(sql, (error, results) => {
-    if (error) return res.status(500).json(error);
-    res.json(results);
-  });
+const handleMatriculasCompletas = async (req, res) => {
+  const { data, error } = await db
+    .from('matriculas')
+    .select(`
+      id,
+      fecha,
+      estudiante:estudiante_id(id,nombre,semestre),
+      curso:curso_id(
+        id,
+        nombre,
+        creditos,
+        docente:docente_id(id,nombre),
+        facultad:facultad_id(id,nombre)
+      )
+    `)
+    .order('id');
+
+  if (error) return res.status(500).json(error);
+  const normalized = data.map((row) => ({
+    id: row.id,
+    estudiante: row.estudiante?.nombre,
+    semestre: row.estudiante?.semestre,
+    curso: row.curso?.nombre,
+    creditos: row.curso?.creditos,
+    docente: row.curso?.docente?.nombre,
+    facultad: row.curso?.facultad?.nombre,
+    fecha: row.fecha,
+  }));
+  res.json(normalized);
 };
 
 app.get('/matriculas-completas', handleMatriculasCompletas);
 app.get('/matricula-completa', handleMatriculasCompletas);
+
+// =====================================================
+// SUPABASE STATUS
+// =====================================================
+const handleSupabaseStatus = async (req, res) => {
+  const tables = ['facultades', 'docentes', 'estudiantes', 'cursos', 'matriculas'];
+  const results = {};
+  let allOk = true;
+
+  for (const table of tables) {
+    const { data, error } = await db.from(table).select('id').limit(1);
+    if (error) {
+      results[table] = {
+        ok: false,
+        message: error.message || 'Error desconocido',
+        code: error.code || 'UNKNOWN',
+      };
+      allOk = false;
+    } else {
+      results[table] = {
+        ok: true,
+        rows: Array.isArray(data) ? data.length : 0,
+      };
+    }
+  }
+
+  res.json({
+    connected: true,
+    supabaseUrl: process.env.SUPABASE_URL,
+    ready: allOk,
+    tables: results,
+    note: allOk
+      ? 'Conexión y tablas disponibles.'
+      : 'Al menos una tabla no existe. Aplica el esquema SQL en Supabase.'
+  });
+};
+
+app.get('/supabase-status', handleSupabaseStatus);
 
 // =====================================================
 // LEVANTAR SERVIDOR

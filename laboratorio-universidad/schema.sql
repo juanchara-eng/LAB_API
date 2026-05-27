@@ -1,54 +1,48 @@
--- Clean schema for 'universidad' with proper FK ordering and cascading
-DROP DATABASE IF EXISTS universidad;
-CREATE DATABASE universidad;
-USE universidad;
+-- Schema para Supabase Postgres
 
--- Drop tables if they exist (reverse order of dependencies)
 DROP TABLE IF EXISTS matriculas;
 DROP TABLE IF EXISTS cursos;
 DROP TABLE IF EXISTS estudiantes;
 DROP TABLE IF EXISTS docentes;
 DROP TABLE IF EXISTS facultades;
 
--- Create base tables
 CREATE TABLE facultades(
-  id INT AUTO_INCREMENT PRIMARY KEY,
+  id SERIAL PRIMARY KEY,
   nombre VARCHAR(100)
-) ENGINE=InnoDB;
+);
 
 CREATE TABLE docentes(
-  id INT AUTO_INCREMENT PRIMARY KEY,
+  id SERIAL PRIMARY KEY,
   nombre VARCHAR(100),
   correo VARCHAR(100)
-) ENGINE=InnoDB;
+);
 
 CREATE TABLE estudiantes(
-  id INT AUTO_INCREMENT PRIMARY KEY,
+  id SERIAL PRIMARY KEY,
   nombre VARCHAR(100),
   correo VARCHAR(100),
   semestre INT
-) ENGINE=InnoDB;
+);
 
 CREATE TABLE cursos(
-  id INT AUTO_INCREMENT PRIMARY KEY,
+  id SERIAL PRIMARY KEY,
   nombre VARCHAR(100),
   creditos INT,
   docente_id INT NULL,
   facultad_id INT NULL,
   CONSTRAINT fk_cursos_docente FOREIGN KEY (docente_id) REFERENCES docentes(id) ON DELETE SET NULL ON UPDATE CASCADE,
   CONSTRAINT fk_cursos_facultad FOREIGN KEY (facultad_id) REFERENCES facultades(id) ON DELETE SET NULL ON UPDATE CASCADE
-) ENGINE=InnoDB;
+);
 
 CREATE TABLE matriculas(
-  id INT AUTO_INCREMENT PRIMARY KEY,
+  id SERIAL PRIMARY KEY,
   estudiante_id INT,
   curso_id INT,
   fecha DATE,
-  CONSTRAINT fk_matriculas_estudiante FOREIGN KEY (estudiante_id) REFERENCES estudiantes(id) ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT fk_matriculas_curso FOREIGN KEY (curso_id) REFERENCES cursos(id) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB;
+  CONSTRAINT fk_matriculas_estudiante FOREIGN KEY (estudiante_id) REFERENCES estudiantes(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT fk_matriculas_curso FOREIGN KEY (curso_id) REFERENCES cursos(id) ON DELETE RESTRICT ON UPDATE CASCADE
+);
 
--- Seed data (insert in dependency order)
 INSERT INTO facultades(nombre) VALUES ('Ingeniería'), ('Salud'), ('Administración');
 
 INSERT INTO docentes(nombre, correo) VALUES
